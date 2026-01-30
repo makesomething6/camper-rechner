@@ -128,83 +128,126 @@ with tab2:
     else:
         st.info("ℹ️ Füge Geräte hinzu für Berechnung")
     
+      # VERERWEITERTE SOLARANLAGE + LICHTMASCHINE
+    st.subheader("☀️⚡ Energiequellen")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
         # SIMPLIFIED SOLAR - NUR Dachfläche!
-    st.subheader("☀️ Solaranlage")
-    
-    # Standard: 175 Wp/m² für Camper-Panels [web:131][web:132]
-    col_solar1, col_solar2 = st.columns([2, 1])
-    
-    with col_solar1:
         dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 12.0, 4.0, 0.5)
-        wp_pro_m2 = 175.0  # FIXED Standard für Camper
-        solar_wp = dach_flaeche * wp_pro_m2
-        st.info(f"**Solarleistung: {solar_wp:.0f} Wp** (175 Wp/m² Standard)")
-        st.metric("**Wp gesamt**", f"{solar_wp:.0f}")
+        solar_wp = dach_flaeche * 175.0  # Camper-Standard
+        st.info(f"**Solarleistung: {solar_wp:.0f} Wp** (175 Wp/m²)")
     
-    with col_solar2:
-        # 20+ detaillierte Reiseziele + Jahreszeiten
-        sonnenstunden_dict = {
-            "🌍 Deutschland Sommer": 5.5,
-            "🌍 Deutschland Winter": 1.5,
-            "🌍 Deutschland Frühling": 4.0,
-            "🌍 Deutschland Herbst": 3.0,
+    with col2:
+        # 30+ Europa Ziele + alle Jahreszeiten
+        sonnenstunden = {
+            "🇩🇪 Deutschland - Sommer": 6.0,
+            "🇩🇪 Deutschland - Frühling": 4.5,
+            "🇩🇪 Deutschland - Herbst": 3.5,
+            "🇩🇪 Deutschland - Winter": 1.8,
             
-            "🇪🇸 Spanien Süden Sommer": 8.0,
-            "🇪🇸 Spanien Süden Winter": 5.0,
-            "🇪🇸 Spanien Süden Frühling": 6.5,
+            "🇪🇸 Spanien - Sommer": 9.0,
+            "🇪🇸 Spanien - Frühling": 7.5,
+            "🇪🇸 Spanien - Herbst": 6.5,
+            "🇪🇸 Spanien - Winter": 5.5,
             
-            "🇮🇹 Italien Sommer": 7.5,
-            "🇮🇹 Italien Winter": 4.0,
+            "🇵🇹 Portugal - Sommer": 8.5,
+            "🇵🇹 Portugal - Frühling": 7.0,
+            "🇵🇹 Portugal - Herbst": 6.0,
+            "🇵🇹 Portugal - Winter": 5.0,
             
-            "🇬🇷 Griechenland Sommer": 8.5,
-            "🇵🇹 Portugal Sommer": 8.0,
+            "🇮🇹 Italien - Sommer": 8.5,
+            "🇮🇹 Italien - Frühling": 6.5,
+            "🇮🇹 Italien - Herbst": 5.5,
+            "🇮🇹 Italien - Winter": 4.0,
             
-            "🇳🇴 Norwegen Sommer": 4.5,
-            "🇳🇴 Norwegen Winter": 0.8,
+            "🇬🇷 Griechenland - Sommer": 10.0,
+            "🇬🇷 Griechenland - Frühling": 8.0,
+            "🇬🇷 Griechenland - Herbst": 7.0,
+            "🇬🇷 Griechenland - Winter": 5.0,
             
-            "🇫🇮 Finnland Sommer": 5.0,
-            "🇸🇪 Schweden Sommer": 5.0,
+            "🇫🇷 Frankreich - Sommer": 8.0,
+            "🇫🇷 Frankreich - Frühling": 6.0,
+            "🇫🇷 Frankreich - Herbst": 5.0,
+            "🇫🇷 Frankreich - Winter": 3.0,
             
-            "🇲🇦 Marokko Winter": 6.0,
-            "🇹🇳 Tunesien Winter": 6.5,
+            "🇳🇱 Niederlande - Sommer": 6.5,
+            "🇳🇱 Niederlande - Frühling": 4.5,
+            "🇳🇱 Niederlande - Herbst": 3.0,
+            "🇳🇱 Niederlande - Winter": 1.5,
             
-            "🏜️ Kanaren ganzjährig": 6.0,
-            "🌴 Mallorca Sommer": 8.5
+            "🇦🇹 Österreich - Sommer": 7.0,
+            "🇦🇹 Österreich - Frühling": 5.0,
+            "🇦🇹 Österreich - Herbst": 4.0,
+            "🇦🇹 Österreich - Winter": 2.5,
+            
+            "🇨🇭 Schweiz - Sommer": 7.0,
+            "🇨🇭 Schweiz - Frühling": 5.0,
+            "🇨🇭 Schweiz - Herbst": 4.0,
+            "🇨🇭 Schweiz - Winter": 2.0,
+            
+            "🇪🇸 Kanaren - ganzjährig": 6.2,
+            "🏝️ Mallorca - Sommer": 9.5,
+            "🇲🇹 Malta - Sommer": 10.5
         }
         
-        ort = st.selectbox("🌍 Reiseziel + Jahreszeit", list(sonnenstunden_dict.keys()))
-        sonnenstunden = sonnenstunden_dict[ort]
+        ort = st.selectbox("🌍 Reiseziel + Jahreszeit", list(sonnenstunden.keys()))
+        sonnenstunden_tag = sonnenstunden[ort]
     
-    # Ertrag berechnen
-    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
+    # LICHTMASCHINE NEU!
+    st.subheader("🚗 Lichtmaschine Laden")
+    col_lm1, col_lm2 = st.columns(2)
     
-    # 3-Spalten Ergebnis
-    col_s1, col_s2, col_s3 = st.columns(3)
-    with col_s1: st.metric("**Solarleistung**", f"{solar_wp:.0f} Wp")
-    with col_s2: st.metric("**Tägl. Ertrag**", f"{solar_yield_wh:.0f} Wh")
+    with col_lm1:
+        ladeleistung_a = st.slider("🔋 Ladeleistung Lichtmaschine (A)", 10.0, 70.0, 30.0, 5.0)
     
+    with col_lm2:
+        fahrzeit_h = st.slider("🛣️ Tägliche Fahrzeit (h)", 0.0, 8.0, 2.0, 0.5)
+    
+    lichtmaschine_wh = ladeleistung_a * 12.0 * fahrzeit_h * 0.85  # 85% Wirkungsgrad
+    
+    # GESAMT-ERGEBNIS
+    st.subheader("📊 Gesamte Energiebilanz")
+    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden_tag)
+    gesamte_erzeugung = solar_yield_wh + lichtmaschine_wh
+    
+    col_total1, col_total2, col_total3, col_total4 = st.columns(4)
+    
+    with col_total1:
+        st.metric("☀️ Solar", f"{solar_yield_wh:.0f} Wh")
+    with col_total2:
+        st.metric("🚗 Lichtmaschine", f"{lichtmaschine_wh:.0f} Wh")
+    with col_total3:
+        st.metric("⚡ **GESAMT**", f"{gesamte_erzeugung:.0f} Wh")
+    
+    # Autarkie mit Lichtmaschine
     if st.session_state.devices:
         total_wh, _ = calculate_power_consumption(st.session_state.devices)
-        autarkie = min(100.0, solar_yield_wh/total_wh*100)
-        with col_s3: st.metric("**Autarkie**", f"{autarkie:.0f} %")
+        autarkie_gesamt = min(100.0, gesamte_erzeugung/total_wh*100)
+        
+        with col_total4:
+            st.metric("**Autarkie**", f"{autarkie_gesamt:.0f} %")
         
         col_status1, col_status2 = st.columns(2)
-        if autarkie > 120:
+        if autarkie_gesamt > 120:
             col_status1.success("✅ Voll autark!")
-            col_status2.info(f"💡 Solar deckt {total_wh:.0f} Wh + 20% Reserve")
-        elif autarkie > 80:
-            col_status1.info("ℹ️ Fast autark")
-            col_status2.warning("⚠️ Generator für Schlechtwetter")
+            col_status2.success(f"💰 Überschuss: +{gesamte_erzeugung-total_wh:.0f} Wh")
+        elif autarkie_gesamt > 90:
+            col_status1.success("✅ Perfekt!")
+            col_status2.info(f"📈 Reserve: {autarkie_gesamt:.0f}%")
+        elif autarkie_gesamt > 70:
+            col_status1.info("ℹ️ Sehr gut")
+            col_status2.warning(f"⚠️ Generator für Regen")
         else:
-            col_status1.error("❌ Nicht autark")
-            col_status2.info(f"⚡ Fehl: {total_wh-solar_yield_wh:.0f} Wh/Tag")
+            col_status1.error("❌ Ergänzung nötig")
+            col_status2.error(f"⚡ Fehl: {total_wh-gesamte_erzeugung:.0f} Wh")
     else:
-        with col_s3: st.metric("**Autarkie**", "–")
+        with col_total4:
+            st.metric("**Autarkie**", "–")
     
     # Delete Button
-    col_btn1, _ = st.columns(2)
-    with col_btn1:
-        if st.button("🗑️ Alle Geräte löschen", use_container_width=True):
-            st.session_state.devices = []
-            st.rerun()
+    if st.button("🗑️ Alle Geräte löschen", use_container_width=True):
+        st.session_state.devices = []
+        st.rerun()
 
