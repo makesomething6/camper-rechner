@@ -83,4 +83,66 @@ with tab1:
         hoehe = st.slider("Höhe (m)", 1.6, 2.2, 1.8)
     
     with col2:
-        ausen_temp = st.slider
+        ausen_temp = st.slider("Außentemperatur", -25.0, 10.0, -10.0)
+        innen_temp = st.slider("Ziel-Innentemperatur", 15.0, 25.0, 20.0)
+    
+    with col3:
+        daemm_wahl = st.selectbox("Dämmung", ["Schlecht", "Normal", "Gut", "Sehr gut"])
+        daemm_werte = {"Schlecht": 0.040, "Normal": 0.035, "Gut": 0.034, "Sehr gut": 0.033}
+        lambda_val = daemm_werte[daemm_wahl]
+    
+    # Berechnung
+    volumen = laenge * breite * hoehe
+    surface = 2 * (laenge * hoehe + breite * hoehe) + laenge * breite * 1.2
+    u_wert = lambda_val / 0.019  # 19mm Standard
+    leistung_kw = calculate_heating_power(surface, u_wert, innen_temp - ausen_temp)
+    
+    # Moderne Ergebnis-Karten
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        st.markdown(f'''
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #64748b;">Volumen</h4>
+            <h2 style="margin: 0; color: #1e293b;">{volumen:.1f} m³</h2>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with col_m2:
+        st.markdown(f'''
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #64748b;">U-Wert</h4>
+            <h2 style="margin: 0; color: #1e293b;">{u_wert:.2f} W/m²K</h2>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    with col_m3:
+        st.markdown(f'''
+        <div class="metric-container">
+            <h4 style="margin: 0; color: #64748b;">Heizleistung</h4>
+            <h2 style="margin: 0; color: #3b82f6;">{leistung_kw:.1f} kW</h2>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    # Empfehlung
+    if leistung_kw < 2:
+        st.success("✅ 2 kW Heizung ausreichend")
+    elif leistung_kw < 4:
+        st.warning("⚠️ 4 kW Heizung empfohlen")
+    else:
+        st.error("❌ 6+ kW Heizung erforderlich")
+
+# TAB 2: STROM (dein bestehender Code hier)
+with tab2:
+    st.markdown('<h3 class="section-header">Strom & Solar berechnen</h3>', unsafe_allow_html=True)
+    
+    # Dein bestehender Strom-Code hier einfügen...
+    st.info("Stromrechner folgt (dein bestehender Code)")
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #64748b; padding: 2rem;'>
+    <strong>VanWerkstatt</strong> | Camper Technik Rechner v2.0<br>
+    Automatisches Speichern | Teile deinen Link
+</div>
+""", unsafe_allow_html=True)
