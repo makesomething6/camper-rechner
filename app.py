@@ -87,33 +87,39 @@ with tab2:
         "☕ Kaffeemaschine": {"power": 800, "hours": 0.2, "desc": "Camping 12V"}
     }
     
-    # Neues Gerät
-    st.subheader("➕ Gerät hinzufügen")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        preset_name = st.selectbox("🎛️ Schnellwahl", ["-- neu --"] + list(presets.keys()))
-    
-    with col2:
-        if preset_name != "-- neu --":
-            power = presets[preset_name]["power"]
-            st.info(f"**Auto: {power}W** ({presets[preset_name]['desc']})")
-        else:
-            power = st.number_input("Leistung (W)", min_value=0.0, value=50.0)
-    
-    with col3:
-        if preset_name != "-- neu --":
-            hours = presets[preset_name]["hours"]
-            st.info(f"**Auto: {hours}h**")
-        else:
-            hours = st.number_input("Std/Tag", min_value=0.0, value=1.0, step=0.1)
-    
-    with col4:
-        if st.button("➕ Hinzufügen", use_container_width=True) and power > 0:
-            name = preset_name if preset_name != "-- neu --" else f"Gerät {len(st.session_state.devices)+1}"
-            st.session_state.devices.append({"name": name, "power": power, "hours": hours})
-            st.success(f"✅ {name} hinzugefügt!")
-            st.rerun()
+# Neues Gerät - AUTO-Werte + EDITIERBAR
+st.subheader("➕ Gerät hinzufügen")
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    preset_name = st.selectbox("🎛️ Schnellwahl", ["-- frei --"] + list(presets.keys()), 
+                              key="preset_select")
+
+with col2:
+    # Auto-Wert oder editierbar
+    if preset_name != "-- frei --" and preset_name in presets:
+        default_power = presets[preset_name]["power"]
+        power = st.number_input("Leistung (W)", value=default_power, min_value=0.0, 
+                               help=f"Auto: {default_power}W ({presets[preset_name]['desc']})")
+    else:
+        power = st.number_input("Leistung (W)", value=50.0, min_value=0.0)
+
+with col3:
+    # Auto-Stunden oder editierbar
+    if preset_name != "-- frei --" and preset_name in presets:
+        default_hours = presets[preset_name]["hours"]
+        hours = st.number_input("Std/Tag", value=default_hours, min_value=0.0, step=0.1,
+                               help=f"Auto: {default_hours}h/Tag")
+    else:
+        hours = st.number_input("Std/Tag", value=1.0, min_value=0.0, step=0.1)
+
+with col4:
+    if st.button("➕ Hinzufügen", use_container_width=True) and power > 0 and hours > 0:
+        name = preset_name if preset_name != "-- frei --" else f"Gerät {len(st.session_state.devices)+1}"
+        st.session_state.devices.append({"name": name, "power": power, "hours": hours})
+        st.success(f"✅ {name} ({power}W, {hours}h) hinzugefügt!")
+        st.rerun()
+
     
     # Tabelle
     if st.session_state.devices:
