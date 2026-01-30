@@ -1,8 +1,7 @@
 import streamlit as st
-import math
 import pandas as pd
 
-# Heizungs-Funktionen (bleiben gleich)
+# Heizungs-Funktionen
 @st.cache_data
 def calculate_u_value(thickness_mm, lambda_value):
     return lambda_value / (thickness_mm / 1000)
@@ -14,13 +13,13 @@ def calculate_heating_power(surface_m2, u_value, delta_t):
 # Stromrechner Funktionen
 @st.cache_data
 def calculate_power_consumption(device_list):
-    total_wh = sum(device["power_w"] * device["hours"] for device in device_list)
+    total_wh = sum(device["power"] * device["hours"] for device in device_list)
     total_ah = total_wh / 12  # 12V System
     return total_wh, total_ah
 
 @st.cache_data
 def calculate_solar_yield(panel_wp, sun_hours):
-    efficiency = 0.8  # Systemverluste
+    efficiency = 0.8
     return panel_wp * sun_hours * efficiency
 
 st.set_page_config(page_title="Camper Ausbau Rechner", layout="wide")
@@ -28,7 +27,6 @@ st.set_page_config(page_title="Camper Ausbau Rechner", layout="wide")
 st.title("🚐 Camper Ausbau Plattform")
 tab1, tab2 = st.tabs(["🔥 Heizung", "⚡ Strom & Solar"])
 
-# HEIZUNGS-RECHNER (oben unverändert)
 with tab1:
     st.header("Heizleistungs-Rechner")
     
@@ -68,9 +66,12 @@ with tab1:
     elif leistung_kw < 4: st.warning("⚠️ 4 kW empfohlen")
     else: st.error("❌ 6+ kW nötig")
 
-# STROM-RECHNER (NEU!)
 with tab2:
     st.header("⚡ Strombedarf & Solar")
+    
+    # Session State initialisieren
+    if 'devices' not in st.session_state:
+        st.session_state.devices = []
     
     # Standardgeräte Presets
     presets = {
@@ -80,39 +81,70 @@ with tab2:
         "🔥 Standheizung": {"power": 50, "hours": 2},
         "🍳 Elektrokocher": {"power": 1000, "hours": 0.5},
         "🚲 E-Bike laden": {"power": 250, "hours": 2},
-        "❄️ Kühlschrank": {"power": 50, "hours": 24/3}  # 1/3 Einschaltquote
+        "❄️ Kühlschrank": {"power": 50, "hours": 8}
     }
     
-    # Dynamische Geräte-Liste
-    if 'devices' not in st.session_state:
-        st.session_state.devices = [{"name": "", "power": 0, "hours": 0}]
-    
-    st.subheader("Geräte hinzufügen")
-    col_add1, col_add2, col_add3 = st.columns(3)
+    # Neues Gerät hinzufügen
+    st.subheader("➕ Gerät hinzufügen")
+    col_add1, col_add2, col_add3, _ = st.columns(4)
     
     with col_add1:
-        preset = st.selectbox("Schnellwahl", ["Benutzerdefiniert"] + list(presets.keys()))
-        if preset != "Benutzerdefiniert":
-            st.session_state.devices[-1] = presets[preset].copy()
-            st.session_state.devices[-1]["name"] = preset
+        preset_name = st.selectbox("Schnellwahl", ["-- neu --"] + list(presets.keys()))
     
     with col_add2:
-        st.session_state.devices[-1]["power"] = st.number_input("Leistung (W)", 
-            value=st.session_state.devices[-1]["power"], min_value=0.0)
+        power = st.number_input("Leistung (W)", min_value=0.0, value=50.0)
     
     with col_add3:
-        st.session_state.devices[-1]["hours"] = st.number_input("Std/Tag", 
-            value=st.session_state.devices[-1]["hours"], min_value=0.0, step=0.1)
-        if st.button("➕ Gerät hinzufügen"): 
-            st.session_state.devices.append({"name": "", "power": 0, "hours": 0})
+        hours = st.number_input("Std/Tag", min_value=0.0, value=1.0, step=0.1)
+    
+    if st.button("➕ Hinzufügen") and (power > 0 and hours > 0):
+        new_device = {"name": preset_name if preset_name != "-- neu --" else f"Gerät {len(st.session_state.devices)+1}", 
+                     "power": power, "hours": hours}
+        st.session_state.devices.append(new_device)
+        st.rerun()
     
     # Geräte-Tabelle
-    st.subheader("Deine Geräte")
-    df_devices = pd.DataFrame(st.session_state.devices)
-    df_devices["Wh/Tag"] = df_devices["power"] * df_devices["hours"]
-    st.dataframe(df_devices[["name", "power", "hours", "Wh/Tag"]], use_container_width=True)
+    if st.session_state.devices:
+        st.subheader("📋 Deine Geräte")
+        df_devices = pd.DataFrame(st.session_state.devices)
+        df_devices["Wh/Tag"] = df_devices["power"] * df_devices["hours"]
+        st.dataframe(df_devices, use_container_width=True)
+        
+        total_wh, total_ah = calculate_power_consumption(st.session_state.devices)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1: st.metric("**Tagesverbrauch**", f"{total_wh:.0f} Wh")
+        with col2: st.metric("**(12V)**", f"{total_ah:.1f} Ah")
+        with col3: st.metric("**Batterie nötig**", f"{total_ah*2:.1f} Ah (x2 Reserve)")
     
-    total_wh, total_ah = calculate_power_consumption(st.session_state.devices)
+    # Solar
+    st.subheader("☀️ Solaranlage")
+    col_sol1, col_sol2 = st.columns(2)
+    with col_sol1:
+        solar_wp = st.slider("Solarleistung (Wp)", 100, 1000, 300)
+        dach_flaeche = st.slider("Freie Dachfläche (m²)", 1.0, 10.0, 4.0)
     
-    col1, col2, col3 = st.columns(3)
-    with
+    with col_sol2:
+        ort = st.selectbox("Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", 
+                                        "Deutschland (Sommer)", "Skandinavien (Winter)"])
+        sonnenstunden = {"Norwegen (Sommer)": 5, "Südeuropa (Sommer)": 7, 
+                        "Deutschland (Sommer)": 5, "Skandinavien (Winter)": 1.5}[ort]
+    
+    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
+    
+    col_s1, col_s2 = st.columns(2)
+    with col_s1: st.metric("Solar-Ertrag/Tag", f"{solar_yield_wh:.0f} Wh")
+    
+    if 'devices' in st.session_state and st.session_state.devices:
+        autarkie = min(100, solar_yield_wh / total_wh * 100)
+        with col_s2: st.metric("Autarkie", f"{autarkie:.0f} %")
+        
+        if autarkie > 120: st.success("✅ Solar deckt Verbrauch + Reserve")
+        elif autarkie > 80: st.info("ℹ️ Solar fast ausreichend")
+        else: st.error("❌ Mehr Solar oder weniger Verbrauch nötig")
+    
+    # Reset
+    st.button("🗑️ Alle Geräte löschen", on_click=lambda: setattr(st.session_state, 'devices', []))
+
+st.markdown("---")
+st.caption("💾 Automatisches Speichern | Teile deinen Link!")
