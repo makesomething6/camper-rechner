@@ -73,7 +73,7 @@ with tab2:
     if 'devices' not in st.session_state:
         st.session_state.devices = []
     
-    # REALISTISCHE PRESETS [web:42][web:46]
+    # REALISTISCHE PRESETS
     presets = {
         "📱 Handy laden": {"power": 15, "hours": 2, "desc": "USB 12V"},
         "💻 Laptop laden": {"power": 65, "hours": 3, "desc": "12V Ladegerät"},
@@ -111,11 +111,12 @@ with tab2:
             hours = st.number_input("Std/Tag", value=1.0, min_value=0.0, step=0.1)
     
     with col4:
-        if st.button("➕ Hinzufügen", use_container_width=True) and power > 0 and hours > 0:
-            name = preset_name if preset_name != "-- frei --" else f"Gerät {len(st.session_state.devices)+1}"
-            st.session_state.devices.append({"name": name, "power": float(power), "hours": float(hours)})
-            st.success(f"✅ {name} hinzugefügt!")
-            st.rerun()
+        if st.button("➕ Hinzufügen", use_container_width=True):
+            if power > 0 and hours > 0:
+                name = preset_name if preset_name != "-- frei --" else f"Gerät {len(st.session_state.devices)+1}"
+                st.session_state.devices.append({"name": name, "power": float(power), "hours": float(hours)})
+                st.success(f"✅ {name} hinzugefügt!")
+                st.rerun()
     
     # Tabelle + Summen
     if st.session_state.devices:
@@ -128,4 +129,61 @@ with tab2:
         total_wh, total_ah = calculate_power_consumption(st.session_state.devices)
         
         col1, col2, col3 = st.columns(3)
-        with col1: st.metric("**Tagesverbrauch**",
+        with col1: 
+            st.metric("**Tagesverbrauch**", f"{total_wh:.0f} Wh")
+        with col2: 
+            st.metric("**12V System**", f"{total_ah:.1f} Ah")
+        with col3: 
+            st.metric("**Batterie nötig**", f"{total_ah*2.5:.0f} Ah")
+    else:
+        st.info("ℹ️ Füge Geräte hinzu für Berechnung")
+    
+    # Solar AUTO-SKALIERUNG
+    st.subheader("☀️ Solaranlage")
+    col_sol1, col_sol2 = st.columns(2)
+    
+    with col_sol1:
+        dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 10.0, 4.0, 0.5)
+        wp_pro_m2 = st.slider("📏 Wp/m²", 120, 200, 175, 25)
+        solar_wp = dach_flaeche * wp_pro_m2
+        st.info(f"**Max Solarleistung: {solar_wp:.0f} Wp**")
+    
+    with col_sol2:
+        ort = st.selectbox("🌍 Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", 
+                                          "Deutschland (Sommer)", "Skandinavien (Winter)"])
+        sonnenstunden = {"Norwegen (Sommer)": 5, "Südeuropa (Sommer)": 7, 
+                        "Deutschland (Sommer)": 5, "Skandinavien (Winter)": 1.5}[ort]
+    
+    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
+    
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1: 
+        st.metric("**Solarleistung**", f"{solar_wp:.0f} Wp")
+    with col_s2: 
+        st.metric("**Tägl. Ertrag**", f"{solar_yield_wh:.0f} Wh")
+    
+    if st.session_state.devices:
+        total_wh, _ = calculate_power_consumption(st.session_state.devices)
+        autarkie = min(100, solar_yield_wh/total_wh*100)
+        with col_s3: 
+            st.metric("**Autarkie**", f"{autarkie:.0f} %")
+        
+        if autarkie > 120: 
+            st.success("✅ Voll autark!")
+        elif autarkie > 80: 
+            st.info("ℹ️ Fast autark – Generator Backup")
+        else: 
+            st.error("❌ Generator/Powerbank nötig!")
+    else:
+        with col_s3: 
+            st.metric("**Autarkie**", "–")
+    
+    # Controls
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🗑️ Alle löschen", use_container_width=True):
+            st.session_state.devices = []
+            st.rerun()
+
+st.markdown("---")
+st.caption("🎉 Camper Ausbau Plattform v2.0 | Automatisches Speichern")
