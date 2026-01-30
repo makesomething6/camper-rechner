@@ -1,13 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
-from io import BytesIO
-import base64
-
 
 # Heizungs-Funktionen
 @st.cache_data
