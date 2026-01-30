@@ -128,21 +128,57 @@ with tab2:
     else:
         st.info("ℹ️ Füge Geräte hinzu für Berechnung")
     
+        # SIMPLIFIED SOLAR - NUR Dachfläche!
     st.subheader("☀️ Solaranlage")
-    col_sol1, col_sol2 = st.columns(2)
     
-    with col_sol1:
-        dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 10.0, 4.0, 0.5)
-        wp_pro_m2 = st.slider("📏 Wp/m²", 120.0, 200.0, 175.0, 25.0)
+    # Standard: 175 Wp/m² für Camper-Panels [web:131][web:132]
+    col_solar1, col_solar2 = st.columns([2, 1])
+    
+    with col_solar1:
+        dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 12.0, 4.0, 0.5)
+        wp_pro_m2 = 175.0  # FIXED Standard für Camper
         solar_wp = dach_flaeche * wp_pro_m2
-        st.info(f"**Max Solarleistung: {solar_wp:.0f} Wp**")
+        st.info(f"**Solarleistung: {solar_wp:.0f} Wp** (175 Wp/m² Standard)")
+        st.metric("**Wp gesamt**", f"{solar_wp:.0f}")
     
-    with col_sol2:
-        ort = st.selectbox("🌍 Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", "Deutschland (Sommer)", "Skandinavien (Winter)"])
-        sonnenstunden = {"Norwegen (Sommer)": 5.0, "Südeuropa (Sommer)": 7.0, "Deutschland (Sommer)": 5.0, "Skandinavien (Winter)": 1.5}[ort]
+    with col_solar2:
+        # 20+ detaillierte Reiseziele + Jahreszeiten
+        sonnenstunden_dict = {
+            "🌍 Deutschland Sommer": 5.5,
+            "🌍 Deutschland Winter": 1.5,
+            "🌍 Deutschland Frühling": 4.0,
+            "🌍 Deutschland Herbst": 3.0,
+            
+            "🇪🇸 Spanien Süden Sommer": 8.0,
+            "🇪🇸 Spanien Süden Winter": 5.0,
+            "🇪🇸 Spanien Süden Frühling": 6.5,
+            
+            "🇮🇹 Italien Sommer": 7.5,
+            "🇮🇹 Italien Winter": 4.0,
+            
+            "🇬🇷 Griechenland Sommer": 8.5,
+            "🇵🇹 Portugal Sommer": 8.0,
+            
+            "🇳🇴 Norwegen Sommer": 4.5,
+            "🇳🇴 Norwegen Winter": 0.8,
+            
+            "🇫🇮 Finnland Sommer": 5.0,
+            "🇸🇪 Schweden Sommer": 5.0,
+            
+            "🇲🇦 Marokko Winter": 6.0,
+            "🇹🇳 Tunesien Winter": 6.5,
+            
+            "🏜️ Kanaren ganzjährig": 6.0,
+            "🌴 Mallorca Sommer": 8.5
+        }
+        
+        ort = st.selectbox("🌍 Reiseziel + Jahreszeit", list(sonnenstunden_dict.keys()))
+        sonnenstunden = sonnenstunden_dict[ort]
     
+    # Ertrag berechnen
     solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
     
+    # 3-Spalten Ergebnis
     col_s1, col_s2, col_s3 = st.columns(3)
     with col_s1: st.metric("**Solarleistung**", f"{solar_wp:.0f} Wp")
     with col_s2: st.metric("**Tägl. Ertrag**", f"{solar_yield_wh:.0f} Wh")
@@ -152,20 +188,23 @@ with tab2:
         autarkie = min(100.0, solar_yield_wh/total_wh*100)
         with col_s3: st.metric("**Autarkie**", f"{autarkie:.0f} %")
         
+        col_status1, col_status2 = st.columns(2)
         if autarkie > 120:
-            st.success("✅ Voll autark!")
+            col_status1.success("✅ Voll autark!")
+            col_status2.info(f"💡 Solar deckt {total_wh:.0f} Wh + 20% Reserve")
         elif autarkie > 80:
-            st.info("ℹ️ Fast autark – Generator Backup")
+            col_status1.info("ℹ️ Fast autark")
+            col_status2.warning("⚠️ Generator für Schlechtwetter")
         else:
-            st.error("❌ Generator/Powerbank nötig!")
+            col_status1.error("❌ Nicht autark")
+            col_status2.info(f"⚡ Fehl: {total_wh-solar_yield_wh:.0f} Wh/Tag")
     else:
         with col_s3: st.metric("**Autarkie**", "–")
     
-    col_btn1, col_btn2 = st.columns(2)
+    # Delete Button
+    col_btn1, _ = st.columns(2)
     with col_btn1:
-        if st.button("🗑️ Alle löschen", use_container_width=True):
+        if st.button("🗑️ Alle Geräte löschen", use_container_width=True):
             st.session_state.devices = []
             st.rerun()
 
-st.markdown("---")
-st.caption("🎉 Camper Ausbau Plattform v2.0 | Automatisches Speichern")
