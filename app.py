@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from io import BytesIO
+import base64
+
+
 # Heizungs-Funktionen
 @st.cache_data
 def calculate_u_value(thickness_mm, lambda_value):
@@ -25,7 +33,7 @@ def calculate_solar_yield(panel_wp, sun_hours):
 st.set_page_config(page_title="Camper Ausbau Rechner", layout="wide")
 
 st.title("🚐 Camper Ausbau Plattform")
-tab1, tab2 = st.tabs(["🔥 Heizung", "⚡ Strom & Solar"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔥 Heizung", "⚡ Strom", "☀️ Solar", "💧 Wasser", "⚖️ Gewicht"])
 
 with tab1:
     st.header("Heizleistungs-Rechner")
@@ -250,6 +258,97 @@ with tab2:
     if st.button("🗑️ Alle Geräte löschen", use_container_width=True):
         st.session_state.devices = []
         st.rerun()
+
+
+
+    with tab4:  # WASSER-TAB
+        st.subheader("💧 Wassertank-Rechner")
+    
+        col1, col2 = st.columns(2)
+        with col1:
+            tank_groesse = st.number_input("🛢️ Tank-Größe (L)", 50, 300, 100)
+            verbrauch_tag = st.slider("🚿 Verbrauch/Tag (L)", 5, 50, 20)
+        with col2:
+            duschzeit = st.slider("🛁 Dusche (min)", 2, 15, 5)
+            kochwasser = st.slider("🍳 Kochen/Abwasch (L)", 5, 20, 10)
+        
+        tage_autark = tank_groesse / (verbrauch_tag + duschzeit*0.1 + kochwasser*0.5)
+        col_ok, col_warn, col_tage = st.columns([1,1,2])
+        if tage_autark >= 7:
+            with col_ok: st.success(f"✅ {tage_autark:.1f} Tage")
+        elif tage_autark >= 3:
+            with col_warn: st.warning(f"⚠️ {tage_autark:.1f} Tage")
+        else:
+            with col_warn: st.error(f"❌ Nur {tage_autark:.1f} Tage")
+        with col_tage: st.info(f"Tank: {tank_groesse}L | Verbrauch: {verbrauch_tag+duschzeit*0.1+kochwasser*0.5:.0f}L/Tag")
+
+    with tab5:  # GEWICHT-TAB  
+        st.subheader("⚖️ Zuladungs-Rechner")
+    
+        # Fahrzeug-Presets
+        fahrzeug = st.selectbox("🚐 Fahrzeug", 
+            ["Sprinter L2H2 (3.5t)", "Ducato L3H2 (3.5t)", "Transit L2H2 (3.5t)", "VW Crafter (3.5t)"],
+            index=0)
+    
+        if fahrzeug == "Sprinter L2H2 (3.5t)":
+            zuladung_max = 800
+            eigengewicht = 2700
+        else:
+            zuladung_max = 750
+            eigengewicht = 2750
+    
+        # Komponenten
+        solar_kg = st.slider("☀️ Solar (kg)", 0, 50, 15)
+        batterie_kg = st.slider("🔋 Batterie (kg)", 20, 100, 40)
+        wasser_kg = st.slider("💧 Wassertank voll (kg)", 0, 150, 100)
+        ausbau_kg = st.slider("🏗️ Ausbau (kg)", 200, 800, 400)
+    
+        gesamt_zuladung = solar_kg + batterie_kg + wasser_kg + ausbau_kg
+        frei = zuladung_max - gesamt_zuladung
+    
+        col1, col2, col3 = st.columns(3)
+        with col1: st.metric("Zuladung max", f"{zuladung_max}kg")
+        with col2: st.metric("Aktuell", f"{gesamt_zuladung}kg", f"{frei:+.0f}kg")
+        with col3: 
+            if frei > 100: st.success("✓ Viel Reserve")
+            elif frei > 0: st.warning("⚠️ Knapp")
+            else: st.error("❌ Überladen!")
+
+# 📄 PDF EXPORT
+st.sidebar.markdown("---")
+if st.sidebar.button("📄 PDF Export", type="primary"):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Titel
+    story.append(Paragraph("VanWerkstatt - Technik Rechner", styles['Title']))
+    story.append(Spacer(1, 12))
+    
+    # Heizung
+    story.append(Paragraph("🔥 Heizung", styles['Heading2']))
+    story.append(Paragraph(f"U-Wert: {u_wert:.2f} W/m²K<br/>Heizleistung: {leistung_kw:.1f} kW", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Wasser
+    story.append(Paragraph("💧 Wasser", styles['Heading2']))
+    story.append(Paragraph(f"{tage_autark:.1f} Tage Autarkie", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Strom & Gewicht als Tabellen...
+    
+    doc.build(story)
+    buffer.seek(0)
+    
+    st.download_button(
+        label="📥 PDF herunterladen",
+        data=buffer.getvalue(),
+        file_name="vanwerkstatt_bericht.pdf",
+        mime="application/pdf"
+    )
+                
+
 
 st.markdown("---")
 st.caption("🎉 Camper Ausbau Plattform v2.0 | Automatisches Speichern")
