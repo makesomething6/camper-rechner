@@ -73,7 +73,7 @@ with tab2:
     if 'devices' not in st.session_state:
         st.session_state.devices = []
     
-    # REALISTISCHE PRESETS mit deinen Werten [web:42][web:46][web:71]
+    # REALISTISCHE PRESETS [web:42][web:46]
     presets = {
         "📱 Handy laden": {"power": 15, "hours": 2, "desc": "USB 12V"},
         "💻 Laptop laden": {"power": 65, "hours": 3, "desc": "12V Ladegerät"},
@@ -87,41 +87,37 @@ with tab2:
         "☕ Kaffeemaschine": {"power": 800, "hours": 0.2, "desc": "Camping 12V"}
     }
     
-# Neues Gerät - AUTO-Werte + EDITIERBAR
-st.subheader("➕ Gerät hinzufügen")
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    preset_name = st.selectbox("🎛️ Schnellwahl", ["-- frei --"] + list(presets.keys()), 
-                              key="preset_select")
-
-with col2:
-    # Auto-Wert oder editierbar
-    if preset_name != "-- frei --" and preset_name in presets:
-        default_power = presets[preset_name]["power"]
-        power = st.number_input("Leistung (W)", value=default_power, min_value=0.0, 
-                               help=f"Auto: {default_power}W ({presets[preset_name]['desc']})")
-    else:
-        power = st.number_input("Leistung (W)", value=50.0, min_value=0.0)
-
-with col3:
-    # Auto-Stunden oder editierbar
-    if preset_name != "-- frei --" and preset_name in presets:
-        default_hours = presets[preset_name]["hours"]
-        hours = st.number_input("Std/Tag", value=default_hours, min_value=0.0, step=0.1,
-                               help=f"Auto: {default_hours}h/Tag")
-    else:
-        hours = st.number_input("Std/Tag", value=1.0, min_value=0.0, step=0.1)
-
-with col4:
-    if st.button("➕ Hinzufügen", use_container_width=True) and power > 0 and hours > 0:
-        name = preset_name if preset_name != "-- frei --" else f"Gerät {len(st.session_state.devices)+1}"
-        st.session_state.devices.append({"name": name, "power": power, "hours": hours})
-        st.success(f"✅ {name} ({power}W, {hours}h) hinzugefügt!")
-        st.rerun()
-
+    # Neues Gerät - AUTO-Werte + EDITIERBAR
+    st.subheader("➕ Gerät hinzufügen")
+    col1, col2, col3, col4 = st.columns(4)
     
-    # Tabelle
+    with col1:
+        preset_name = st.selectbox("🎛️ Schnellwahl", ["-- frei --"] + list(presets.keys()))
+    
+    with col2:
+        if preset_name != "-- frei --" and preset_name in presets:
+            default_power = presets[preset_name]["power"]
+            power = st.number_input("Leistung (W)", value=default_power, min_value=0.0,
+                                   help=f"Auto: {default_power}W ({presets[preset_name]['desc']})")
+        else:
+            power = st.number_input("Leistung (W)", value=50.0, min_value=0.0)
+    
+    with col3:
+        if preset_name != "-- frei --" and preset_name in presets:
+            default_hours = presets[preset_name]["hours"]
+            hours = st.number_input("Std/Tag", value=default_hours, min_value=0.0, step=0.1,
+                                   help=f"Auto: {default_hours}h/Tag")
+        else:
+            hours = st.number_input("Std/Tag", value=1.0, min_value=0.0, step=0.1)
+    
+    with col4:
+        if st.button("➕ Hinzufügen", use_container_width=True) and power > 0 and hours > 0:
+            name = preset_name if preset_name != "-- frei --" else f"Gerät {len(st.session_state.devices)+1}"
+            st.session_state.devices.append({"name": name, "power": float(power), "hours": float(hours)})
+            st.success(f"✅ {name} hinzugefügt!")
+            st.rerun()
+    
+    # Tabelle + Summen
     if st.session_state.devices:
         st.subheader("📋 Deine Geräte")
         df = pd.DataFrame(st.session_state.devices)
@@ -132,44 +128,4 @@ with col4:
         total_wh, total_ah = calculate_power_consumption(st.session_state.devices)
         
         col1, col2, col3 = st.columns(3)
-        with col1: st.metric("**Tagesverbrauch**", f"{total_wh:.0f} Wh")
-        with col2: st.metric("**12V System**", f"{total_ah:.1f} Ah")
-        with col3: st.metric("**Batterie nötig**", f"{total_ah*2.5:.0f} Ah", delta=None)
-    
-    # Solar (dein auto-skalierter Code hier einfügen...)
-    st.subheader("☀️ Solaranlage")
-    col_sol1, col_sol2 = st.columns(2)
-    with col_sol1:
-        dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 10.0, 4.0, 0.5)
-        wp_pro_m2 = st.slider("📏 Wp/m²", 120, 200, 175, 25)
-        solar_wp = dach_flaeche * wp_pro_m2
-        st.info(f"**Max: {solar_wp:.0f} Wp**")
-    
-    with col_sol2:
-        ort = st.selectbox("🌍 Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", 
-                                          "Deutschland (Sommer)", "Skandinavien (Winter)"])
-        sonnenstunden = {"Norwegen (Sommer)": 5, "Südeuropa (Sommer)": 7, 
-                        "Deutschland (Sommer)": 5, "Skandinavien (Winter)": 1.5}[ort]
-    
-    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
-    
-    col_s1, col_s2 = st.columns(2)
-    with col_s1: st.metric("**Solarleistung**", f"{solar_wp:.0f} Wp")
-    with col_s2: st.metric("**Tägl. Ertrag**", f"{solar_yield_wh:.0f} Wh")
-    
-    if 'devices' in st.session_state and st.session_state.devices:
-        autarkie = min(100, solar_yield_wh/total_wh*100)
-        st.metric("**Autarkie**", f"{autarkie:.0f}%", 
-                 delta=None, delta_color="normal")
-        
-        if autarkie > 120: st.success("✅ Voll autark!")
-        elif autarkie > 80: st.info("ℹ️ Fast autark")
-        else: st.error("❌ Generator nötig")
-    
-    # Controls
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1: 
-        if st.button("🗑️ Löschen", use_container_width=True):
-            st.session_state.devices = []
-            st.rerun()
-
+        with col1: st.metric("**Tagesverbrauch**",
