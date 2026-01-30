@@ -117,34 +117,37 @@ with tab2:
         with col2: st.metric("**(12V)**", f"{total_ah:.1f} Ah")
         with col3: st.metric("**Batterie nötig**", f"{total_ah*2:.1f} Ah (x2 Reserve)")
     
-    # Solar
-    st.subheader("☀️ Solaranlage")
-    col_sol1, col_sol2 = st.columns(2)
-    with col_sol1:
-        solar_wp = st.slider("Solarleistung (Wp)", 100, 1000, 300)
-        dach_flaeche = st.slider("Freie Dachfläche (m²)", 1.0, 10.0, 4.0)
-    
-    with col_sol2:
-        ort = st.selectbox("Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", 
-                                        "Deutschland (Sommer)", "Skandinavien (Winter)"])
-        sonnenstunden = {"Norwegen (Sommer)": 5, "Südeuropa (Sommer)": 7, 
-                        "Deutschland (Sommer)": 5, "Skandinavien (Winter)": 1.5}[ort]
-    
-    solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
-    
-    col_s1, col_s2 = st.columns(2)
-    with col_s1: st.metric("Solar-Ertrag/Tag", f"{solar_yield_wh:.0f} Wh")
-    
-    if 'devices' in st.session_state and st.session_state.devices:
-        autarkie = min(100, solar_yield_wh / total_wh * 100)
-        with col_s2: st.metric("Autarkie", f"{autarkie:.0f} %")
-        
-        if autarkie > 120: st.success("✅ Solar deckt Verbrauch + Reserve")
-        elif autarkie > 80: st.info("ℹ️ Solar fast ausreichend")
-        else: st.error("❌ Mehr Solar oder weniger Verbrauch nötig")
-    
-    # Reset
-    st.button("🗑️ Alle Geräte löschen", on_click=lambda: setattr(st.session_state, 'devices', []))
+  # Solar (AUTO-SKALIERUNG!)
+st.subheader("☀️ Solaranlage")
+col_sol1, col_sol2 = st.columns(2)
 
-st.markdown("---")
-st.caption("💾 Automatisches Speichern | Teile deinen Link!")
+with col_sol1:
+    dach_flaeche = st.slider("🚗 Freie Dachfläche (m²)", 1.0, 10.0, 4.0, 0.5)
+    wp_pro_m2 = st.slider("📏 Wp/m² (Panel-Dichte)", 120, 200, 175, 25)
+    solar_wp = dach_flaeche * wp_pro_m2  # AUTOMATISCH!
+    st.info(f"**Max Solarleistung:** {solar_wp:.0f} Wp")
+
+with col_sol2:
+    ort = st.selectbox("🌍 Reiseziel", ["Norwegen (Sommer)", "Südeuropa (Sommer)", 
+                                      "Deutschland (Sommer)", "Skandinavien (Winter)"])
+    sonnenstunden = {"Norwegen (Sommer)": 5, "Südeuropa (Sommer)": 7, 
+                    "Deutschland (Sommer)": 5, "Skandinavien (Winter)": 1.5}[ort]
+
+solar_yield_wh = calculate_solar_yield(solar_wp, sonnenstunden)
+
+col_s1, col_s2, col_s3 = st.columns(3)
+with col_s1: st.metric("**Solarleistung**", f"{solar_wp:.0f} Wp")
+with col_s2: st.metric("**Tägl. Ertrag**", f"{solar_yield_wh:.0f} Wh")
+
+if 'devices' in st.session_state and st.session_state.devices:
+    autarkie = min(100, solar_yield_wh / total_wh * 100)
+    with col_s3: st.metric("**Autarkie**", f"{autarkie:.0f} %", delta=None)
+    
+    if autarkie > 120: 
+        st.success("✅ Voll autark! 💪")
+    elif autarkie > 80: 
+        st.info("ℹ️ Fast autark – Generator als Backup")
+    else: 
+        st.error("❌ Generator/Powerbank nötig!")
+else:
+    st.info("ℹ️ Füge zuerst Geräte hinzu")
